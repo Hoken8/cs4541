@@ -1,0 +1,90 @@
+Script started on 2023-09-25 22:39:21+00:00 [TERM="xterm-256color" TTY="/dev/pts/2" COLUMNS="310" LINES="40"]
+[0;32m@Hoken8 [0m➜ [1;34m/workspaces/cs4541/assignment_1 [0;36m([1;31mmain[0;36m) [0m$ make
+gcc -std=c99 -Wall -o number_demonstration number_demonstration.c
+[01m[Knumber_demonstration.c:[m[K In function ‘[01m[Kmain[m[K’:
+[01m[Knumber_demonstration.c:77:26:[m[K [01;35m[Kwarning: [m[Kinteger overflow in expression of type ‘[01m[Kint[m[K’ results in ‘[01m[K-1794967296[m[K’ [[01;35m[K-Woverflow[m[K]
+   77 |    problem_05_var = 50000[01;35m[K*[m[K50000;
+      |                          [01;35m[K^[m[K
+[01m[Knumber_demonstration.c:83:26:[m[K [01;35m[Kwarning: [m[Kinteger overflow in expression of type ‘[01m[Kint[m[K’ results in ‘[01m[K-694967296[m[K’ [[01;35m[K-Woverflow[m[K]
+   83 |    problem_05_var = 60000[01;35m[K*[m[K60000;
+      |                          [01;35m[K^[m[K
+[01m[Knumber_demonstration.c:89:26:[m[K [01;35m[Kwarning: [m[Kinteger overflow in expression of type ‘[01m[Kint[m[K’ results in ‘[01m[K605032704[m[K’ [[01;35m[K-Woverflow[m[K]
+   89 |    problem_05_var = 70000[01;35m[K*[m[K70000;
+      |                          [01;35m[K^[m[K
+[0;32m@Hoken8 [0m➜ [1;34m/workspaces/cs4541/assignment_1 [0;36m([1;31mmain[0;36m) [0m$ make[K[K[K[K./number_demonstration 
+Results:
+
+Problem 1:
+x = 2.5
+Expected: 2.5000000000 
+  Result: 2.5000000000
+
+Problem 2:
+x = -1.0/10.0
+Expected: -0.1000000000 
+  Result: -0.1000000015
+
+
+Problem 3:
+x = 1/3
+Expected: 0.333333 
+  Result: 0
+
+x = 1.0/3.0
+Expected: 0.333333 
+  Result: 0.333333
+
+
+Problem 4:
+x = 9999999.3399999999
+Expected: 9999999.3399999999 
+  Result: 1e+07
+
+x = (float)9999999.3399999999
+Expected: 9999999.3399999999 
+  Result: 9999999.000000
+
+
+Problem 5:
+x = 30000*30000
+Expected: 900000000 
+  Result: 900000000
+
+x = 40000*40000
+Expected: 1600000000 
+  Result: 1600000000
+
+x = 50000*0000
+Expected: 2500000000 
+  Result: -1794967296
+
+x = 60000*60000
+Expected: 3600000000 
+  Result: -694967296
+
+x = 70000*70000
+Expected: 4900000000 
+  Result: 605032704
+
+
+Problem 6:
+x = 1e20
+Expected: 100000000000000000000 
+  Result: 100000002004087734272.000000
+
+x = 1e20 + 3500000000
+Expected: 100000000003500000000 
+  Result: 100000002004087734272.000000
+
+x = 1e20 + (3500000000 * 1000000000)
+Expected: 103500000000000000000 
+  Result: 103500002601996386304.000000
+
+x = w/loop (1e20 + (3500000000 * 1000000000)
+Expected: 103500000000000000000 
+  Result: 100000002004087734272.000000
+
+[0;32m@Hoken8 [0m➜ [1;34m/workspaces/cs4541/assignment_1 [0;36m([1;31mmain[0;36m) [0m$ exit
+exit
+
+Script done on 2023-09-25 22:40:08+00:00 [COMMAND_EXIT_CODE="0"]
