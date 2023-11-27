@@ -1,5 +1,5 @@
-#define INITHEAPSIZE 1000
-#define MAXHEAPSIZE 100000
+#define INITHEAPSIZE 1000                                                   //intial heap size
+#define MAXHEAPSIZE 100000                                                  //maximum heap size
 
 #define PACK(size, alloc) ((size<<2)|(alloc))                               //set allocation bit and size into a word
 #define GET(p) (*(p))                                                       //reads a word at address p
@@ -10,8 +10,7 @@
 #define FTRP(bp) ((uint32_t *)(bp) + GET_SIZE(HDRP(bp))-2)                  //finds the footer of a block from the block pointer
 #define NEXT_BLKP(bp) ((uint32_t *)(bp) + GET_SIZE((uint32_t *)(bp)-1))     //calcutes address of next block
 #define PREV_BLKP(bp) ((uint32_t *)(bp) - GET_SIZE((uint32_t *)(bp)-2))     //calcutes address of previous block
-// #define NEXT_BLKP(bp) ((uint32_t *)(FTRP(bp)+1))     //calcutes address of next block
-// #define PREV_BLKP(bp) ((uint32_t *)(bp-2))     //calcutes address of previous block
+
 
 #include <stdio.h>
 #include <stdint.h>
@@ -22,50 +21,28 @@
 
 
 //heap variables
-static uint32_t *mem_heap = NULL;
-static uint32_t *heap_listp = NULL;
-static uint32_t *mem_brk = NULL;
-static uint32_t heap_size = 0;
+static uint32_t *mem_heap = NULL;           //address of the start of the heap
+static uint32_t *heap_listp = NULL;         //first block address in heap
+static uint32_t *mem_brk = NULL;            //last address in heap
+static uint32_t heap_size = 0;              //number of words in heap
 
 //command line variables
-char* output_path = NULL;
-char* input_file = NULL;
-char* free_list = NULL;
-char* fit = NULL;
-int verbose_mode = 0;
+char* output_path = NULL;                   //user input: output path
+char* input_file = NULL;                    //user input: command file 
+char* free_list = NULL;                     //user input: heap list type
+char* fit = NULL;                           //user input: fit type   
+int verbose_mode = 0;                       //user input: verbose mode flag
 
 //pointer address storage
 struct pointers
 {
-   int key;
-   uint32_t* addr;
+   int key;                                 //pointer index 
+   uint32_t* addr;                          //pointer address
 };
 
-size_t total_pointers = 0;
+size_t total_pointers = 0;                  //number of active pointers
 
-void printAll(uint32_t *bp){
-    printf("\nblock:\n");
-    printf("addr: %p\n", bp);
-    printf("header: %p, %d, %#x\n", HDRP(bp), GET_SIZE(HDRP(bp)), GET(HDRP(bp)));
-    printf("footer: %p, %d, %#x\n", FTRP(bp), GET_SIZE(FTRP(bp)), GET(FTRP(bp)));
-    printf("\n");
-    printf("prev-block: %p, %d\n", PREV_BLKP(bp), GET_ALLOC(PREV_BLKP(bp)));
-    printf("next-block: %p, %d\n", NEXT_BLKP(bp), GET_ALLOC(NEXT_BLKP(bp)));
-    printf("prev-space: %d\n", *(uint32_t *)(HDRP(bp)-1)>>2);
-    printf("prev-alloc: %d\n", *(uint32_t *)(HDRP(bp)-1)& 0x1);
-    printf("next-space: %d\n", *(uint32_t *)(FTRP(bp)+1)>>2);
-    printf("next-alloc: %d\n", *(uint32_t *)(FTRP(bp)+1)& 0x1);
-
-    if(bp == PREV_BLKP(bp) ){
-        printf("BEGINNING BLOCK\n");
-    }
-    if(((uint32_t *)(FTRP(bp)+1)) == HDRP(NEXT_BLKP(bp))){
-        printf("ENDING BLOCK\n");
-    }else{
-        printf("C BLOCK %p\n",(uint32_t *)(NEXT_BLKP(bp)-1));
-    }
-}
-
+//sets the boundry headers and footer for fresh heap
 int setMemory(){
     for(int i = 0; i > heap_size; i++){
         mem_heap[i] = 0;
@@ -77,22 +54,28 @@ int setMemory(){
     return 0;
 }
 
-
+// grows or shrinks the size of the heap by a number of words specified by the input parameter "size"
+// returns pointer to start of the heap
 void *mysbrk(uint32_t size){
 
+    //does nothing if called with 0
+    // return the old pointer to the start of the heap
     if(size == 0){
         return (void *)mem_heap;
     }
 
+    // errors if more than maximum memory is called
+    // returns null
     if((size + heap_size) > MAXHEAPSIZE){
         printf("Error: Heap size exceeded MAXIMUM ALLOWABLE SIZE of %d.\n\n", MAXHEAPSIZE);
         return NULL; 
     }
 
+    // allocs virtual heap memory in your heap memory
+    // sets all pointers
+    // returns pointer to the start of the heap
     if(size > 0){
-        printf("Heap size: %d\n", heap_size);
-        printf("Heap sized to: %d\n", heap_size+size);
-        uint32_t *new_mem_heap = (uint32_t *)realloc(mem_heap, heap_size+(size));
+        uint32_t *new_mem_heap = (uint32_t *)realloc(mem_heap, heap_size+(size)*sizeof(uint32_t));
         heap_listp  = &new_mem_heap[2];
         heap_size += size;
         mem_brk = &new_mem_heap[heap_size];
@@ -101,11 +84,12 @@ void *mysbrk(uint32_t size){
     return (void *)mem_heap;
 }
 
+// find the first unallocated block
+// returns address that block
+// returns null if nothing found
 static void *find_fit(uint32_t asize){
     void *bp;
     for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)){
-        printf("<FF>checking: %p, size:%d\n", bp, GET_SIZE(HDRP(bp)));
-        printf("<FF>size: %d\n", (asize <= GET_SIZE(HDRP(bp))));
         if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
             printf("<FF>found: %p\n",bp);
             return bp;
@@ -114,126 +98,118 @@ static void *find_fit(uint32_t asize){
     return NULL;
 }
 
+// places a block into memory
 static void place(void *bp, uint32_t asize){
     uint32_t csize = GET_SIZE(HDRP(bp));
-    printf("<place>free block space %d\n", csize);
     
+    //checks for smallest block with data alinement 
     if((csize - asize) >= 4){
         PUT(HDRP(bp), PACK((asize),1));
         PUT(FTRP(bp), PACK((asize),1));
-        printf("header-set: %p, %#x\n",HDRP(bp),PACK((asize),1));
-        printf("footer-set: %p, %#x\n",FTRP(bp),PACK((asize),1));
         bp = NEXT_BLKP(bp);
         PUT(HDRP(bp), PACK((csize-asize),0));
         PUT(FTRP(bp), PACK((csize-asize),0));
-        printf("header-set: %p, %#x\n",HDRP(bp),PACK((csize-asize),0));
-        printf("footer-set: %p, %#x\n",FTRP(bp),PACK((csize-asize),0));
-        printf("\n");
     }else{
         PUT(HDRP(bp), PACK((csize),1));
         PUT(FTRP(bp), PACK((csize),1));
-        printf("header-set: %p, %#x\n",HDRP(bp),PACK((csize),1));
-        printf("footer-set: %p, %#x\n",FTRP(bp),PACK((csize),1));
-        printf("\n");
     }
 }
 
+// takes an integer value indicating the number of bytes to allocate for the payload of the block
+// returns a "pointer" to the starting address of the payload of the allocated block
 void *myalloc(size_t size){
     size_t asize;
     uint32_t *bp;
 
+    // return null is size is 0
     if(size == 0){
         return NULL;
     }
 
+    // calculates total block size
     asize = ((int)(size>>2) +((int)(size%4))+2);
     if(asize%2 != 0){
         asize++;
     }
-    printf("mymalloc: %ld\n", asize);
+    
+    // find the a smaller free block to write to
     if((bp = find_fit(asize)) != NULL){
         place(bp, asize);
         return bp;
     };
 
+    // increases the heap to hold block that will not fit
+    // sets the new heaps headers / footers
     PUT(mem_brk, PACK(asize,0));
     mem_heap = mysbrk(asize);
     bp = find_fit(asize-1);
     PUT(mem_brk-2, PACK((asize),0));
     PUT(mem_brk-1, PACK(0,1));
-    //place(bp, asize);
+    place(bp, asize);
     return bp;
 }
 
+// coalesce blocks
+// case 1: alloceted prev and next
+// case 2: alloceted prev only
+// case 3: alloceted next only
+// case 4: both unalloceted
+
 static void *coalesce(uint32_t *bp){
-    printf("\ncoalescing: %p\n", bp);
-    // uint32_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
-    // uint32_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
     uint32_t prev_alloc = *(uint32_t *)(HDRP(bp)-1)& 0x1;
     uint32_t next_alloc = *(uint32_t *)(FTRP(bp)+1)& 0x1;
     uint32_t size = GET_SIZE(HDRP(bp));
-    printf("ALLOC PREV: %p, %d, %#x\n", FTRP(PREV_BLKP(bp)),prev_alloc, GET(FTRP(PREV_BLKP(bp))));
-    printf("ALLOC NEXT: %p, %d, %#x\n", HDRP(NEXT_BLKP(bp)),next_alloc, GET(HDRP(NEXT_BLKP(bp))));
-    printf("header-size: %d\n", size);
 
+    // case 1 [1,1]
     if(prev_alloc && next_alloc){
-        printf("CASE 1 [1,1]\n");
         return bp;
     }
 
+    // case 2 [1,0]
     else if(prev_alloc && !next_alloc){
-        printf("CASE 2 [1,0]\n");
         size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
         PUT(HDRP(bp), PACK((size),0));
         PUT(FTRP(bp), PACK((size),0));
-        printf("header-set: %p, %#x\n",HDRP(bp), PACK(size,0));
-        printf("footer-set: %p, %#x\n",FTRP(bp), PACK(size,0));
     }
 
+    // case 3 [0,1]
     else if(!prev_alloc && next_alloc){
         size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
         PUT(FTRP(bp), PACK((size),0));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size,0));
-        printf("CASE 3 [0,1]\n");
-        printf("header-set: %p, %#x\n",HDRP(PREV_BLKP(bp)), PACK(size,0));
-        printf("footer-set: %p, %#x\n",FTRP(bp),PACK((size),0));
         bp = PREV_BLKP(bp);
     }
 
+     // case 4 [0,0]
     else{
         size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size,0));
         PUT(FTRP(NEXT_BLKP(bp)), PACK(size,0));
-        printf("CASE 4 [0,0]\n");
-        printf("header-set: %p, %#x\n",HDRP(PREV_BLKP(bp)),PACK((size),0));
-        printf("footer-set: %p, %#x\n",FTRP(NEXT_BLKP(bp)),PACK((size),0));
         bp = PREV_BLKP(bp);
     }
 
     return bp;
 }
 
+// frees block from heap
 void myfree(int32_t *bp){
     printf("\n<myFree>: %p\n", bp);
     size_t size = GET_SIZE(HDRP(bp));
 
     PUT(HDRP(bp), PACK(size,0));
     //PUT(FTRP(bp), PACK(size,0));
-    //printf("header-set: %p, %#lx\n",HDRP(bp),PACK((size),0));
-    //printf("footer-set: %p, %#lx\n",FTRP(bp),PACK((size),0));
 
     coalesce((void*)bp);
 }
 
+// takes a pointer to an allocated block and an integer value to resize the block
 void *myrealloc(int32_t *bp, size_t size){
     size_t asize = GET_SIZE(HDRP(bp));
     uint32_t *new_bp;
 
-    printf("REALLOC: %ld\n", asize);
+
     new_bp = myalloc(size);
     memcpy(new_bp, bp, sizeof(int32_t)*(asize-2));
-    printf("memcpying: %ld\n",sizeof(int32_t)*(asize-2));
-    // myfree(bp);
     size_t fsize = GET_SIZE(HDRP(bp));
     PUT(HDRP(bp), PACK(fsize,0));
     PUT(FTRP(bp), PACK(fsize,0));
@@ -243,17 +219,16 @@ void *myrealloc(int32_t *bp, size_t size){
 void printHeap(int N, uint32_t *ptr){
     // Print the elements of the array
     printf("\nThe elements of the array => \n");
-    for(int i = 0; i < 10; i++)
-        printf("%p: %d, %#08x \n",(void*)&ptr[i], i, ptr[i]);
-    printf("\n");
-    for(int i = 980; i < heap_size; i++)
-        printf("%p: %d, %#08x \n",(void*)&ptr[i], i, ptr[i]);
+    for(int i = 0; i < heap_size; i++)
+        printf("%p: %d, 0x%08X \n",(void*)&ptr[i], i, ptr[i]);
     printf("\n");
 }
 
 int saveHeap(int N, uint32_t *ptr){
     char filename[32];
-    snprintf(filename, sizeof(char) * 32, "output/%c.%s.%s.out", input_file[6], free_list, fit);
+    char *filenumber = strtok(input_file, "/");
+    filenumber = strtok(NULL, ".");
+    snprintf(filename, sizeof(char) * 32, "output/%s.%s.%s.out", filenumber, free_list, fit);
 
     FILE* fp = fopen(filename, "w+");
     if (fp == NULL) { 
@@ -262,13 +237,9 @@ int saveHeap(int N, uint32_t *ptr){
     }
     for(int i = 0 ; i < heap_size; i++){
         if(ptr[i] != 0){
-            fprintf(fp, "%d, 0x%08x\n", i, ptr[i]);
-            fflush(fp);
-            printf("%d, 0x%08x\n", i, ptr[i]);
+            fprintf(fp, "%d, 0x%08X\n", i, ptr[i]);
         } else {
             fprintf(fp, "%d, \n", i);
-            fflush(fp);
-            printf("%d, \n", i);
         }
     }
     fclose(fp);
@@ -303,7 +274,7 @@ void runInputFile(char* file_name) {
     while (fscanf(fp, " %c, %d, %d, %d", &cmd, &v1, &v2, &v3) != -1) {
         switch(cmd) {
             case 'a':
-                printf("\nRun Command: a %d %d\n",v1,v2);
+                //printf("\nRun Command: a %d %d\n",v1,v2);
                 bp = myalloc(v1);
                 pts = realloc(pts, (sizeof(struct pointers) * (total_pointers+1)));
                 pts[total_pointers].key = v2;
@@ -311,7 +282,7 @@ void runInputFile(char* file_name) {
                 total_pointers++;
                 break;
             case 'r': 
-                printf("\nRun Command: r %d %d %d\n",v1,v2,v3);
+                //printf("\nRun Command: r %d %d %d\n",v1,v2,v3);
                 for(int i = 0; i < total_pointers; i++){
                     if(pts[i].key == v2 && pts[i].addr != NULL){
                         bp = pts[i].addr + *mem_heap;
@@ -321,7 +292,7 @@ void runInputFile(char* file_name) {
                 }
                 break;
             case 'f':
-                printf("\nRun Command: f %d\n",v1);
+                //printf("\nRun Command: f %d\n",v1);
                 int pos = 0;
                 for(int i = 0; i < total_pointers; i++){
                     if(pts[i].key == v1 && pts[i].addr != NULL){
@@ -397,14 +368,24 @@ int main(int argc, char* argv[]){
         exit(1);
     }
 
+    // sets up heap
     mem_heap = mysbrk(INITHEAPSIZE);
     if(mem_heap == NULL){
         exit(1);
     }
+
+    // sets boundry headers and footers
     setMemory();
+
+    // reads command file
     runInputFile(input_file);
-    //printHeap(heap_size, mem_heap);
+
+    // outputs heap
+    if(verbose_mode){
+        printHeap(heap_size, mem_heap);
+    }
     saveHeap(heap_size, mem_heap);
+    
     free(mem_heap);
     return 0;
 }
