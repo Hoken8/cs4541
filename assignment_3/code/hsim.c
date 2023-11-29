@@ -44,6 +44,10 @@ struct pointers
 
 size_t total_pointers = 0;                  //number of active pointers
 
+
+//phototypes
+int saveHeap(int N, uint32_t *ptr);
+
 //sets the boundry headers and footer for fresh heap
 int setMemory(){
     for(int i = 0; i > heap_size; i++){
@@ -70,14 +74,14 @@ void *mysbrk(uint32_t size){
     // returns null
     if((size + heap_size) > MAXHEAPSIZE){
         printf("%s, Error: Heap size exceeded MAXIMUM ALLOWABLE SIZE of %d.\n\n", input_file, MAXHEAPSIZE);
-        return NULL; 
+        return NULL;
     }
 
     // allocs virtual heap memory in your heap memory
     // sets all pointers
     // returns pointer to the start of the heap
     if(size > 0){
-        uint32_t *new_mem_heap = (uint32_t *)realloc(mem_heap, (heap_size+size+1)*sizeof(uint32_t));
+        uint32_t *new_mem_heap = (uint32_t *)realloc(mem_heap, (heap_size+size)*sizeof(uint32_t));
         heap_listp  = &new_mem_heap[2];
         heap_size += size;
         mem_brk = &new_mem_heap[heap_size];
@@ -89,14 +93,35 @@ void *mysbrk(uint32_t size){
 // find the first unallocated block
 // returns address that block
 // returns null if nothing found
-static void *find_fit(uint32_t asize){
+static void *findFit(uint32_t asize){
     void *bp;
-    for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)){
-        if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
-            return bp;
-        }
+    void *best_bp = NULL;
+    switch(fit_flag){
+        //first fit
+        case 0:
+            for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)){
+                if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
+                    return bp;
+                }
+            }
+            return NULL;
+            break;
+        //best fit
+        case 1:
+            bp = heap_listp;
+            while (GET_SIZE(HDRP(bp)) != 0) {
+                if (!GET_ALLOC(HDRP(bp)) && (GET_SIZE(HDRP(bp)) >= asize)) {
+                    if (!best_bp || (GET_SIZE(HDRP(bp)) < GET_SIZE(HDRP(best_bp))))
+                    best_bp = bp;
+                }
+                bp = NEXT_BLKP(bp);
+            }
+            return best_bp;
+            break;
+        default:
+            exit(-1);
+            break;
     }
-    return NULL;
 }
 
 // places a block into memory
@@ -134,7 +159,7 @@ void *myalloc(size_t size){
     }
 
     // find the a smaller free block to write to
-    if((bp = find_fit(asize)) != NULL){
+    if((bp = findFit(asize)) != NULL){
         place(bp, asize);
         return bp;
     };
@@ -145,8 +170,10 @@ void *myalloc(size_t size){
     PUT(mem_brk-1, PACK(asize,1));
     mem_heap = mysbrk(asize);
     if(mem_heap == NULL){
+        saveHeap(0, mem_heap);
         exit(1);
     }
+    PUT(mem_brk-asize, 0);    
     PUT(mem_brk-2, PACK((asize),1));
     PUT(mem_brk-1, PACK(0,1));
     return mem_brk-asize;
@@ -240,7 +267,7 @@ int saveHeap(int N, uint32_t *ptr){
         printf("Failed to create the file.\n");
         return -1;
     }
-    for(int i = 0 ; i < heap_size; i++){
+    for(int i = 0 ; i < N; i++){
         if(ptr[i] != 0){
             fprintf(fp, "%d, 0x%08X\n", i, ptr[i]);
         } else {
@@ -279,7 +306,6 @@ void runInputFile(char* file_name) {
     while (fscanf(fp, " %c, %d, %d, %d", &cmd, &v1, &v2, &v3) != -1) {
         switch(cmd) {
             case 'a':
-                //printf("\nRun Command: a %d %d\n",v1,v2);
                 bp = myalloc(v1);
                 pts = realloc(pts, (sizeof(struct pointers) * (total_pointers+1)));
                 pts[total_pointers].key = v2;
@@ -287,7 +313,6 @@ void runInputFile(char* file_name) {
                 total_pointers++;
                 break;
             case 'r': 
-                //printf("\nRun Command: r %d %d %d\n",v1,v2,v3);
                 for(int i = 0; i < total_pointers; i++){
                     if(pts[i].key == v2){
                         bp = mem_heap + pts[i].offset;
@@ -298,7 +323,6 @@ void runInputFile(char* file_name) {
                 }
                 break;
             case 'f':
-                //printf("\nRun Command: f %d\n",v1);
                 pos = 0;
                 for(int i = 0; i < total_pointers; i++){
                     if(pts[i].key == v1){
@@ -407,9 +431,9 @@ int main(int argc, char* argv[]){
     runInputFile(input_file);
 
     // outputs heap
-
     //printHeap(heap_size, mem_heap);
     
+    //saving virtual heap to an output file
     saveHeap(heap_size, mem_heap);
     
     free(mem_heap);
